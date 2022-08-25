@@ -1,20 +1,46 @@
+const fs = require('fs');
 const puppeteer = require('puppeteer');
+const crawler = require('./crawler');
+const cols = require('./cols');
 
-(async () => {
+const fetchMineralInfo = async (mineral) => {
   const browser = await puppeteer.launch({
     headless: false,
     defaultViewport: null,
   });
   const page = await browser.newPage();
-  await page.goto('https://zh.mindat.org/');
-  await page.type('#searchboxhp', 'Achyrophanite');
 
   await Promise.all([
     page.waitForNavigation(),
-    await page.keyboard.press('Enter'),
+    await page.goto(`https://zh.mindat.org/search.php?search=${mineral}`),
   ]);
 
-  await page.screenshot({ path: 'page.png' });
+  const data = await page.evaluate(crawler);
 
   await browser.close();
-})();
+
+  return data;
+};
+
+const main = async () => {
+  let res = [cols];
+  let mineralList;
+
+  try {
+    mineralList = fs.readFileSync('./mineralList.txt', 'utf-8').split('\n');
+  } catch (err) {
+    throw new Error(err);
+  }
+
+  for (let i = 0, len = mineralList.length; i < 3; i++) {
+    const mineral = mineralList[i];
+    const data = await fetchMineralInfo(mineral);
+    res.push(data);
+  }
+
+  console.log('====================================');
+  console.log(res);
+  console.log('====================================');
+};
+
+main();
