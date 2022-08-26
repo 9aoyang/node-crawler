@@ -10,6 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "puppeteer": "^16.2.0"
+    "node-xlsx": "^0.21.0",
+    "puppeteer": "^16.2.0",
+    "puppeteer-cluster": "^0.23.0"
   }
 }

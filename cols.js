@@ -1,4 +1,5 @@
 const cols = [
+  'Name',
   'Class (H-M):',
   'Morphology:',
   'Twinning:',
