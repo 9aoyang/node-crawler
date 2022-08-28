@@ -1,18 +1,12 @@
 const cols = [
   'Name',
-  'Class (H-M):',
-  'Morphology:',
-  'Twinning:',
-  'Type:',
-  '2V:',
-  'Birefringence:',
-  'Max Birefringence:',
-  'Surface Relief:',
-  'Optical Extinction:',
-  'Pleochroism:',
-  'Ratio:',
-  'Unit Cell V:',
-  'Common Impurities:',
+  'Regional',
+  'Latitude & Longitude (WGS84):',
+  'Latitude & Longitude (decimal):',
+  'GeoHash:',
+  'GRN:',
+  'Locality type:',
+  'Köppen climate type:',
 ];
 
 module.exports = cols;
