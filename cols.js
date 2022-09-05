@@ -1,12 +1,3 @@
-const cols = [
-  'Name',
-  'Regional',
-  'Latitude & Longitude (WGS84):',
-  'Latitude & Longitude (decimal):',
-  'GeoHash:',
-  'GRN:',
-  'Locality type:',
-  'Köppen climate type:',
-];
+const cols = ['Name', 'Atomic Positions', 'XRD Data', 'Lattice Energy'];
 
 module.exports = cols;

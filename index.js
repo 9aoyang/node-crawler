@@ -1,7 +1,12 @@
 const fs = require('fs');
 const { Cluster } = require('puppeteer-cluster');
 
-const { linkCrawler, locCrawler } = require('./crawler');
+const {
+  mineralLinkCrawler,
+  cardLinkCrawler,
+  infoLinkCrawler,
+  infoDetailCrawler,
+} = require('./crawler');
 const json2csv = require('./json2csv');
 const cols = require('./cols');
 
@@ -9,13 +14,10 @@ process.setMaxListeners(0);
 
 const options = {
   concurrency: Cluster.CONCURRENCY_CONTEXT,
-  maxConcurrency: 8,
-  timeout: 24 * 60 * 60 * 1000,
+  maxConcurrency: 12,
   monitor: true,
   retryDelay: 1000,
   puppeteerOptions: {
-    // headless: false,
-    // timeout: 24 * 60 * 60 * 1000,
     args: [
       '--disable-web-security',
       '--disable-xss-auditor',
@@ -32,60 +34,33 @@ const options = {
 };
 
 const initialPage = async (page) => {
-  // 拦截请求
-  await page.setRequestInterception(true);
-
-  page.on('request', (req) => {
-    // 根据请求类型过滤
-    const resourceType = req.resourceType();
-    if (resourceType === 'image') {
-      req.abort();
-    } else {
-      req.continue();
-    }
-  });
-
   await page.setDefaultNavigationTimeout(0);
 };
 
-const fetchAllLinks = async (mineralList) => {
-  const links = [];
+const fetchMineralLinks = async () => {
+  let mineralLinks;
   const cluster = await Cluster.launch(options);
 
-  await cluster.task(async ({ page, data: { url, name } }) => {
-    await await initialPage(page);
+  await cluster.task(async ({ page, data: { url } }) => {
+    await initialPage(page);
 
     await Promise.all([page.waitForNavigation(), await page.goto(url)]);
 
-    await page.evaluateOnNewDocument(() => {
-      const newProto = navigator.__proto__;
-      delete newProto.webdriver;
-      navigator.__proto__ = newProto;
-    });
-
-    const locLinks = await page.evaluate(linkCrawler);
-
-    links.push({ name, locLinks });
+    mineralLinks = await page.evaluate(mineralLinkCrawler);
   });
 
-  const num = 10;
-
-  for (let i = num, len = num + 90; i < len; i++) {
-    const mineral = mineralList[i];
-    cluster.queue({
-      url: `https://zh.mindat.org/search.php?search=${mineral}`,
-      name: mineral,
-    });
-  }
+  cluster.queue({
+    url: 'http://database.iem.ac.ru/mincryst/s_lattice.php',
+  });
 
   await cluster.idle();
   await cluster.close();
 
-  return links;
+  return mineralLinks;
 };
 
-const fetchLocationInfo = async (links) => {
-  const rows = [];
+const fetchCardLinks = async (links) => {
+  let cardLinks = [];
   const cluster = await Cluster.launch(options);
 
   await cluster.task(async ({ page, data: { url, name } }) => {
@@ -93,22 +68,56 @@ const fetchLocationInfo = async (links) => {
 
     await Promise.all([page.waitForNavigation(), await page.goto(url)]);
 
-    const infos = await page.evaluate(locCrawler);
+    const links = await page.evaluate(cardLinkCrawler);
+
+    for (let i = 0, len = links.length; i < len; i++) {
+      cardLinks.push([name, links[i]]);
+    }
+  });
+
+  for (let i = 0, len = 10; i < len; i++) {
+    const [name, url] = links[i];
+    cluster.queue({
+      url,
+      name,
+    });
+  }
+
+  await cluster.idle();
+  await cluster.close();
+
+  return cardLinks;
+};
+
+const fetchCardInfos = async (cardLinks) => {
+  let rows = [];
+  const cluster = await Cluster.launch(options);
+
+  await cluster.task(async ({ page, data: { url, name } }) => {
+    await initialPage(page);
+
+    await Promise.all([page.waitForNavigation(), await page.goto(url)]);
+
+    const colLinks = await page.evaluate(infoLinkCrawler);
+
+    let infos = [];
+    for (let i = 0, len = colLinks.length; i < len; i++) {
+      const url = colLinks[i];
+      await Promise.all([page.waitForNavigation(), await page.goto(url)]);
+      const info = await page.evaluate(infoDetailCrawler);
+      infos.push(info);
+    }
+
     rows.push([name, ...infos]);
   });
 
-  const num = 0;
+  for (let i = 0, len = cardLinks.length; i < len; i++) {
+    const [name, url] = cardLinks[i];
 
-  for (let i = num, total = links.length; i < total; i++) {
-    const { name, locLinks } = links[i];
-    for (let j = 0, len = locLinks.length; j < len; j++) {
-      const url = locLinks[j];
-
-      cluster.queue({
-        url,
-        name,
-      });
-    }
+    cluster.queue({
+      url,
+      name,
+    });
   }
 
   await cluster.idle();
@@ -118,18 +127,32 @@ const fetchLocationInfo = async (links) => {
 };
 
 const main = async () => {
-  let mineralList;
+  const mineralLinks = await fetchMineralLinks();
+  const cardLinks = await fetchCardLinks(mineralLinks);
+  const rows = await fetchCardInfos(cardLinks);
 
-  try {
-    mineralList = fs.readFileSync('./mineralList.txt', 'utf-8').split('\n');
-  } catch (err) {
-    throw new Error(err);
-  }
+  // Text length must not exceed 32767 characters
+  // json2csv([cols, ...rows]);
 
-  const links = await fetchAllLinks(mineralList);
-  const rows = await fetchLocationInfo(links);
+  const json = rows.reduce((acc, cur) => {
+    const genItem = (item) => ({
+      [cols[1]]: item[0],
+      [cols[2]]: item[1],
+      [cols[3]]: item[2],
+    });
+    const [name, ...infos] = cur;
+    if (!acc.get(name)) {
+      acc.set(name, [genItem(infos)]);
+    } else {
+      acc.set(name, [...acc.get(name), genItem(infos)]);
+    }
 
-  json2csv([cols, ...rows]);
-};
+    return acc;
+  }, new Map());
+
+  console.log('====================================');
+  console.log(json);
+  console.log('====================================');
+};;;;;
 
 main();

@@ -1,8 +1,16 @@
-const linkCrawler = () => {
-  Object.defineProperty(navigator, 'webdriver', { get: () => false });
-
+const mineralLinkCrawler = () => {
   let links = [];
-  const elements = document.querySelectorAll('.lli ~ a');
+  const elements = document.querySelectorAll('a');
+
+  for (let i = 0, len = elements.length; i < len; i++) {
+    links[i] = [elements[i].textContent, elements[i].href];
+  }
+
+  return links;
+};
+const cardLinkCrawler = () => {
+  let links = [];
+  const elements = document.querySelectorAll('a');
 
   for (let i = 0, len = elements.length; i < len; i++) {
     links[i] = elements[i].href;
@@ -11,46 +19,32 @@ const linkCrawler = () => {
   return links;
 };
 
-const locCrawler = () => {
-  Object.defineProperty(navigator, 'webdriver', { get: () => false });
+const infoLinkCrawler = () => {
+  const links = [];
+  const isMatched = (text) =>
+    ['Atomic Positions', 'Full Information Card', 'Lattice Energy'].includes(
+      text
+    );
+  const elements = document
+    .querySelector('frame[name="menu"]')
+    .contentWindow.document.querySelectorAll('a');
 
-  const cols = [
-    'Regional',
-    'Latitude & Longitude (WGS84):',
-    'Latitude & Longitude (decimal):',
-    'GeoHash:',
-    'GRN:',
-    'Locality type:',
-    'Köppen climate type:',
-  ];
-
-  let infos = new Array(8).fill('');
-
-  const h1 = document.querySelector('h1');
-  infos[0] = h1.textContent.split('Regional')[0];
-
-  const rows = document.querySelectorAll('#locinfodiv .LFtr');
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const th = row.querySelector('.LFth');
-    const td = row.querySelector('.LFtd');
-
-    if (th && th.textContent && td && td.textContent) {
-      const key = th.textContent.trim();
-      const value = td.textContent.trim();
-
-      const index = cols.findIndex((item) => key === item);
-      if (index != -1) {
-        if (value) {
-          infos[index] = value;
-        }
-      }
+  for (let i = 0, len = elements.length; i < len; i++) {
+    if (isMatched(elements[i].innerText)) {
+      links.push(elements[i].href);
     }
   }
-
-  console.log(infos);
-
-  return infos;
+  return links;
 };
 
-module.exports = { linkCrawler, locCrawler };
+const infoDetailCrawler = () => {
+  const html = document.body.innerHTML;
+  return html;
+};
+
+module.exports = {
+  mineralLinkCrawler,
+  cardLinkCrawler,
+  infoLinkCrawler,
+  infoDetailCrawler,
+};

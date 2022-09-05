@@ -7,7 +7,7 @@ const output = 'list.csv';
 const json2csv = (data) => {
   const buffer = xlsx.build([
     {
-      name: 'mindat',
+      name: 'list',
       data,
     },
   ]);
