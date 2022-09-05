@@ -8,7 +8,7 @@ const cols = require('./cols');
 process.setMaxListeners(0);
 
 const options = {
-  concurrency: Cluster.CONCURRENCY_PAGE,
+  concurrency: Cluster.CONCURRENCY_CONTEXT,
   maxConcurrency: 8,
   timeout: 24 * 60 * 60 * 1000,
   monitor: true,
@@ -26,7 +26,7 @@ const options = {
       '--no-first-run', // 没有设置首页。在启动的时候，就会打开一个空白页面。
       '--no-sandbox', // 沙盒模式
       '--no-zygote',
-      '--single-process',
+      // '--single-process',
     ],
   },
 };
@@ -68,9 +68,9 @@ const fetchAllLinks = async (mineralList) => {
     links.push({ name, locLinks });
   });
 
-  const num = 0;
+  const num = 10;
 
-  for (let i = num, len = num + 10; i < len; i++) {
+  for (let i = num, len = num + 90; i < len; i++) {
     const mineral = mineralList[i];
     cluster.queue({
       url: `https://zh.mindat.org/search.php?search=${mineral}`,
